@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Voiceover Studio</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-lg bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+        <h1 class="text-2xl font-bold text-center mb-6 text-cyan-400">🎙️ AI Voiceover Studio</h1>
+        
+        <div class="mb-4">
+            <label class="block text-sm font-medium mb-1 text-slate-300">আপনার টেক্সট (যা ভয়েস হবে):</label>
+            <textarea id="textInput" rows="4" class="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg focus:outline-none focus:border-cyan-400 text-white" placeholder="এখানে আপনার ইংরেজি টেক্সট লিখুন..."></textarea>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-sm font-medium mb-1 text-slate-300">ভয়েস টোন বা স্টাইল (Voice Tone):</label>
+            <input id="toneInput" type="text" class="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg focus:outline-none focus:border-cyan-400 text-white" placeholder="যেমন: Deep, Cinematic, Happy, Energetic, Sad...">
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-sm font-medium mb-1 text-slate-300">ক্যারেক্টার সিলেক্ট করুন:</label>
+            <select id="charSelect" class="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg focus:outline-none focus:border-cyan-400 text-white">
+                <option value="Puck">Puck (Male - Fast & Friendly)</option>
+                <option value="Charon">Charon (Male - Deep & Calm)</option>
+                <option value="Kore">Kore (Female - Clear & Professional)</option>
+                <option value="Fenrir">Fenrir (Male - Dramatic)</option>
+            </select>
+        </div>
+
+        <button id="genBtn" onclick="generateVoice()" class="w-full bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-bold py-3 rounded-lg transition-all shadow-lg cursor-pointer">
+            Generate Voice 🚀
+        </button>
+
+        <div id="audioContainer" class="mt-6 hidden border-t border-slate-700 pt-4 text-center">
+            <p class="text-sm text-green-400 mb-2">✓ ভয়েস তৈরি সম্পন্ন হয়েছে!</p>
+            <audio id="audioPlayer" controls class="w-full mt-2"></audio>
+        </div>
+    </div>
+
+    <script>
+        async function generateVoice() {
+            const text = document.getElementById('textInput').value;
+            const tone = document.getElementById('toneInput').value || "Professional";
+            const voice = document.getElementById('charSelect').value;
+            const btn = document.getElementById('genBtn');
+            const audioContainer = document.getElementById('audioContainer');
+            const audioPlayer = document.getElementById('audioPlayer');
+
+            if (!text) {
+                alert("দয়া করে কিছু টেক্সট লিখুন!");
+                return;
+            }
+
+            // Vercel-এর Environment Variable থেকে API Key রিড করার চেষ্টা করবে
+            // অথবা ব্রাউজারে সেটিংস না থাকলে এটি Vercel থেকে জেনারেট হবে
+            const apiKey = window.env?.GEMINI_API_KEY || "__API_KEY_PLACEHOLDER__";
+
+            if (apiKey === "__API_KEY_PLACEHOLDER__") {
+                alert("API Key সেট করা হয়নি! Vercel Settings-এ GEMINI_API_KEY যোগ করুন।");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Generating... Please wait...⏳";
+            audioContainer.classList.add('hidden');
+
+            // Gemini 2.0 Flash API URL
+            const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            // প্রম্পট সাজানো
+            const systemPrompt = `You are a professional Text-to-Speech engine. Convert the following text into a high-quality voiceover. Tone: ${tone}. Use native-like breathing pauses. Respond ONLY with the raw audio data, do not write text.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: `${systemPrompt}\n\nText to speak: ${text}` }] }],
+                generationConfig: {
+                    responseMimeType: "audio/mp3",
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: voice }
+                        }
+                    }
+                }
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                // অডিও বেস-৬৪ ডেটা এক্সট্রাক্ট করা
+                const base64Audio = data.candidates[0].content.parts[0].inlineData.data;
+                
+                // অডিও প্লেয়ারে সেট করা
+                audioPlayer.src = `data:audio/mp3;base64,${base64Audio}`;
+                audioContainer.classList.remove('hidden');
+            } catch (error) {
+                console.error(error);
+                alert("ভয়েস জেনারেট করতে সমস্যা হয়েছে! আপনার API Key বা ইন্টারনেট চেক করুন।");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Generate Voice 🚀";
+            }
+        }
+    </script>
+</body>
+</html>
