@@ -15,17 +15,17 @@
         <h1 class="text-2xl font-bold text-center mb-6 text-cyan-400">🎙️ AI Voiceover Studio</h1>
         
         <div class="mb-4">
-            <label class="block text-sm font-medium mb-1 text-slate-300">আপনার টেক্সট (যা ভয়েস হবে):</label>
-            <textarea id="textInput" rows="4" class="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg focus:outline-none focus:border-cyan-400 text-white" placeholder="এখানে আপনার ইংরেজি টেক্সট লিখুন..."></textarea>
+            <label class="block text-sm font-medium mb-1 text-slate-300">Your Text (English Only):</label>
+            <textarea id="textInput" rows="4" class="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg focus:outline-none focus:border-cyan-400 text-white" placeholder="Type or paste your English text here..."></textarea>
         </div>
 
         <div class="mb-4">
-            <label class="block text-sm font-medium mb-1 text-slate-300">ভয়েস টোন বা স্টাইল (Voice Tone):</label>
-            <input id="toneInput" type="text" class="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg focus:outline-none focus:border-cyan-400 text-white" placeholder="যেমন: Deep, Cinematic, Happy, Energetic, Sad...">
+            <label class="block text-sm font-medium mb-1 text-slate-300">Voice Tone / Style:</label>
+            <input id="toneInput" type="text" class="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg focus:outline-none focus:border-cyan-400 text-white" placeholder="e.g., Deep, Cinematic, Happy, Energetic, Soft...">
         </div>
 
         <div class="mb-6">
-            <label class="block text-sm font-medium mb-1 text-slate-300">ক্যারেক্টার সিলেক্ট করুন:</label>
+            <label class="block text-sm font-medium mb-1 text-slate-300">Select Character:</label>
             <select id="charSelect" class="w-full p-3 bg-slate-900 border border-slate-600 rounded-lg focus:outline-none focus:border-cyan-400 text-white">
                 <option value="Puck">Puck (Male - Fast & Friendly)</option>
                 <option value="Charon">Charon (Male - Deep & Calm)</option>
@@ -39,7 +39,7 @@
         </button>
 
         <div id="audioContainer" class="mt-6 hidden border-t border-slate-700 pt-4 text-center">
-            <p class="text-sm text-green-400 mb-2">✓ ভয়েস তৈরি সম্পন্ন হয়েছে!</p>
+            <p class="text-sm text-green-400 mb-2">✓ Voice Generated Successfully!</p>
             <audio id="audioPlayer" controls class="w-full mt-2"></audio>
         </div>
     </div>
@@ -54,31 +54,24 @@
             const audioPlayer = document.getElementById('audioPlayer');
 
             if (!text) {
-                alert("দয়া করে কিছু টেক্সট লিখুন!");
+                alert("Please write some text first!");
                 return;
             }
 
-            // Vercel-এর Environment Variable থেকে API Key রিড করার চেষ্টা করবে
-            // অথবা ব্রাউজারে সেটিংস না থাকলে এটি Vercel থেকে জেনারেট হবে
-            const apiKey = window.env?.GEMINI_API_KEY || "AIzaSyAyNyDzWXweJgCD1gxqfe7h-GxrWIK8Grs";
-
-            if (apiKey === "__API_KEY_PLACEHOLDER__") {
-                alert("API Key সেট করা হয়নি! Vercel Settings-এ GEMINI_API_KEY যোগ করুন।");
-                return;
-            }
+            // আপলোড করা API Key সরাসরি এখানে সেট করে দেওয়া হলো
+            const apiKey = "AIzaSyAyNyDzWXweJgCD1gxqfe7h-GxrWIK8Grs"; 
 
             btn.disabled = true;
-            btn.innerText = "Generating... Please wait...⏳";
+            btn.innerText = "Generating Voice... Please wait... ⏳";
             audioContainer.classList.add('hidden');
 
-            // Gemini 2.0 Flash API URL
-            const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            // Gemini v1beta Endpoint for Audio
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
-            // প্রম্পট সাজানো
-            const systemPrompt = `You are a professional Text-to-Speech engine. Convert the following text into a high-quality voiceover. Tone: ${tone}. Use native-like breathing pauses. Respond ONLY with the raw audio data, do not write text.`;
+            const systemPrompt = `You are an expert Text-to-Speech system. Read the user text perfectly. Tone style requested: ${tone}. Respond ONLY with the requested audio generation data. Do not write any chat text.`;
 
             const payload = {
-                contents: [{ parts: [{ text: `${systemPrompt}\n\nText to speak: ${text}` }] }],
+                contents: [{ parts: [{ text: `${systemPrompt}\n\nText to read: ${text}` }] }],
                 generationConfig: {
                     responseMimeType: "audio/mp3",
                     speechConfig: {
@@ -98,15 +91,17 @@
 
                 const data = await response.json();
                 
-                // অডিও বেস-৬৪ ডেটা এক্সট্রাক্ট করা
-                const base64Audio = data.candidates[0].content.parts[0].inlineData.data;
-                
-                // অডিও প্লেয়ারে সেট করা
-                audioPlayer.src = `data:audio/mp3;base64,${base64Audio}`;
-                audioContainer.classList.remove('hidden');
+                if (data.candidates && data.candidates[0].content.parts[0].inlineData) {
+                    const base64Audio = data.candidates[0].content.parts[0].inlineData.data;
+                    audioPlayer.src = `data:audio/mp3;base64,${base64Audio}`;
+                    audioContainer.classList.remove('hidden');
+                    audioPlayer.play(); // অটোমেটিক প্লে হবে
+                } else {
+                    throw new Error("Invalid structure");
+                }
             } catch (error) {
                 console.error(error);
-                alert("ভয়েস জেনারেট করতে সমস্যা হয়েছে! আপনার API Key বা ইন্টারনেট চেক করুন।");
+                alert("ভয়েস তৈরি করা যায়নি! গুগল সার্ভার ব্রাউজার রিকোয়েস্ট ব্লক করছে অথবা কি-টি সঠিক নয়।");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "Generate Voice 🚀";
