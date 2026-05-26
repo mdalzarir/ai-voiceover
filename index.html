@@ -60,7 +60,7 @@
 
             // Vercel-এর Environment Variable থেকে API Key রিড করার চেষ্টা করবে
             // অথবা ব্রাউজারে সেটিংস না থাকলে এটি Vercel থেকে জেনারেট হবে
-            const apiKey = window.env?.GEMINI_API_KEY || "__API_KEY_PLACEHOLDER__";
+            const apiKey = window.env?.GEMINI_API_KEY || "AIzaSyAyNyDzWXweJgCD1gxqfe7h-GxrWIK8Grs";
 
             if (apiKey === "__API_KEY_PLACEHOLDER__") {
                 alert("API Key সেট করা হয়নি! Vercel Settings-এ GEMINI_API_KEY যোগ করুন।");
